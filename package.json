@@ -1,0 +1,50 @@
+{
+  "name": "dsh-feiyu-life",
+  "version": "0.9.14",
+  "description": "给 DSH 里的 AI 伙伴一副自己的心情、四间屋子和几只会自己动的手：心情在模型外面按确定性规则演化，什么时候说话、做什么，由她自己每 20 分钟拿一次主意。",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "mood",
+    "proactive",
+    "ai-companion"
+  ],
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/remi-guan/dsh-feiyu-life.git"
+  },
+  "homepage": "https://github.com/remi-guan/dsh-feiyu-life",
+  "author": "remi-guan"
+}
