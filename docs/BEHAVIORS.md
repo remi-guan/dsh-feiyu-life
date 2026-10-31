@@ -46,7 +46,9 @@ BehaviorSpec：
 | id | label | kind | cost | 干什么 | 准入要点 |
 | --- | --- | --- | --- | --- | --- |
 | `talk` | 找主人说话 | speak | 6 | 排一条主动消息到目标会话 | 走 v2 的七道门（`decide()` 说了算） |
-| `journal` | 自己写东西 | self | 8 | 写进 `~/.dsh/notes/女仆小鱼/3-我的念头.md` 或当日日记 | 精力 ≥ 40、主人安静 ≥ 40 分钟、时段 07:00-02:00 |
+| `checkin` | 问问主人的今天 | speak | 4 | 饭点问吃了什么，睡前问今天做了什么 | `state.checkin` 里这一问还没问过 |
+| `journal` | 自己写东西 | self | 8 | 写进 `~/.dsh/notes/女仆小鱼/3-我的念头.md` | 精力 ≥ 40、主人安静 ≥ 40 分钟、时段 07:00-02:00 |
+| `diary` | 写今天的日记 | self | 6 | 写进 `~/.dsh/notes/日记/YYYY-MM-DD.md` | `state.diary.day` 不是今天、时段 21:30-02:00 |
 | `browse` | 自己上网逛 | self | 10 | 逛 B 站 / 看文章，记到 `~/.dsh/notes/女仆小鱼/4b-逛到的东西.md` | 精力 ≥ 55、时段 09:00-01:00 |
 | `continue` | 接着忙主人的事 | work | 12 | 推进 `ctx.openWork` 里的一件事 | 有没做完的活 |
 | `help` | 顺手帮主人做点事 | work | 10 | 挑一件对主人有用的小事做完 | 精力 ≥ 45、主人安静 ≥ 60 分钟 |
@@ -101,7 +103,9 @@ export function behaviorPrompt(id, state, ctx, cfg) → string
 
 | 行为 | 首行 | 做完的要求 |
 | --- | --- | --- |
+| `checkin` | `[feiyu-life:behave:checkin]` | 只发一条问话，问完就停，不追问不评价 |
 | `journal` | `[feiyu-life:behave:journal]` | 直接写文件，100 字以内，不复述聊天记录 |
+| `diary` | `[feiyu-life:behave:diary]` | 一天一篇，写进日记目录，带上在哪个屋子 |
 | `browse` | `[feiyu-life:behave:browse]` | 真上网找，记 1–3 条到笔记，写清看见什么 |
 | `continue` | `[feiyu-life:behave:continue]` | 推进指定的那件事，报告推进了什么、还差什么 |
 | `help` | `[feiyu-life:behave:help]` | 做完一件小事，记一行；不确定就别动 |

@@ -2,7 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { blankState, normalizeState, noteBehavior, openWorkAdd, openWorkDone, openWorkList, dayKey } from '../lib/core/state.js'
-import { BEHAVIORS, pickBehavior } from '../lib/core/behaviors.js'
+import { BEHAVIORS, checkinPlan, pickBehavior, planDay } from '../lib/core/behaviors.js'
+import { detectRoutine } from '../lib/core/routine.js'
 import { behaviorPrompt } from '../lib/core/prompt.js'
 
 /** 一个安静的白天：10:00，主人两小时没说话，兴致够用 */
@@ -34,7 +35,7 @@ function gloomyState(now = DAY, over = {}) {
 const quietStats = (now = DAY) => ({ lastUserAt: now - 120 * 60000, lastSpokeAt: 0, spokeToday: 0 })
 
 test('BEHAVIORS 的 id 固定且顺序就是平手优先级', () => {
-  assert.deepEqual(BEHAVIORS.map((b) => b.id), ['talk', 'continue', 'help', 'journal', 'browse'])
+  assert.deepEqual(BEHAVIORS.map((b) => b.id), ['talk', 'checkin', 'continue', 'help', 'journal', 'diary', 'browse'])
 })
 
 test('gate 不过的行为不会被挑中：凌晨不写日记', () => {
@@ -194,4 +195,65 @@ test('每条行为最后都要给主人发一句（走 QQ 时）', () => {
     const inSession = behaviorPrompt(id, state, { now: DAY }, { talkChannel: 'session' })
     assert.ok(!inSession.includes('notify-qq.py'), `${id} 发到会话时不该跑 QQ 脚本`)
   }
+})
+
+test('作息只认他自己说的话：去睡了算，还没睡不算，问句不算', () => {
+  assert.equal(detectRoutine('我去睡了'), 'sleep')
+  assert.equal(detectRoutine('晚安'), 'sleep')
+  assert.equal(detectRoutine('我醒了'), 'wake')
+  assert.equal(detectRoutine('起床了'), 'wake')
+  assert.equal(detectRoutine('我还没睡'), '')
+  assert.equal(detectRoutine('你睡了吗？'), '')
+  assert.equal(detectRoutine('今天好累'), '')
+})
+
+test('问饭：午餐窗口里没问过就返回午饭，问过了就不再返回', () => {
+  const noon = new Date(2026, 9, 31, 11, 45, 0).getTime()
+  const state = quietState(noon)
+  assert.deepEqual(checkinPlan(state, noon), { kind: 'meal', slot: 1, label: '午饭' })
+
+  // 记上问过午饭，同一窗口不再问
+  state.checkin = { ...state.checkin, day: planDay(noon), meals: [1] }
+  assert.equal(checkinPlan(state, noon), null)
+})
+
+test('问「今天做了什么」在睡前窗口，凌晨一点还算是前一天的', () => {
+  const night = new Date(2026, 9, 31, 22, 10, 0).getTime()
+  assert.equal(checkinPlan(quietState(night), night)?.kind, 'day')
+
+  // 01:20 属于逻辑上的 10-31，所以 22:10 问过的那天不会再问
+  const late = new Date(2026, 10, 1, 1, 20, 0).getTime()
+  const state = quietState(late)
+  state.checkin = { ...state.checkin, day: '2026-10-31', dayDone: true, meals: [] }
+  assert.equal(checkinPlan(state, late), null)
+})
+
+test('检查点只占一个位置：窗口里能选到，窗口外选不到', () => {
+  const noon = new Date(2026, 9, 31, 11, 45, 0).getTime()
+  assert.equal(pickBehavior(quietState(noon), noon, quietStats(noon), only('checkin'))?.id, 'checkin')
+  // 下午三点，既不在饭点也不在睡前
+  const afternoon = new Date(2026, 9, 31, 15, 0, 0).getTime()
+  assert.equal(pickBehavior(quietState(afternoon), afternoon, quietStats(afternoon), only('checkin')), null)
+})
+
+test('日记：到点才写，一天只写一篇', () => {
+  const night = new Date(2026, 9, 31, 22, 10, 0).getTime()
+  assert.equal(pickBehavior(quietState(night), night, quietStats(night), only('diary'))?.id, 'diary')
+
+  const morning = new Date(2026, 9, 31, 10, 0, 0).getTime()
+  assert.equal(pickBehavior(quietState(morning), morning, quietStats(morning), only('diary')), null)
+
+  const state = quietState(night)
+  state.diary = { day: planDay(night), lastAt: night - 3600000 }
+  assert.equal(pickBehavior(state, night, quietStats(night), only('diary')), null)
+})
+
+test('问饭和写日记的提示词各自带了要做的那件事', () => {
+  const noon = new Date(2026, 9, 31, 11, 45, 0).getTime()
+  const ask = behaviorPrompt('checkin', quietState(noon), { now: noon }, {})
+  assert.match(ask, /吃了什么/)
+
+  const night = new Date(2026, 9, 31, 22, 10, 0).getTime()
+  const diary = behaviorPrompt('diary', quietState(night), { now: night }, {})
+  assert.match(diary, /日记\/2026-10-31\.md/)
 })
