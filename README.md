@@ -61,7 +61,7 @@ node scripts/install.mjs
 
 ### 还要装一个
 
-主动消息最终都落成定时任务，所以需要 [`dsh-timer-agent`](https://github.com/)（DSH 的定时任务引擎）：
+主动消息最终都落成定时任务，所以需要 `dsh-timer-agent`（DSH 的定时任务引擎，装法跟这个插件一样）：
 
 ```bash
 dsh plugin --profile desktop add dsh-timer-agent
