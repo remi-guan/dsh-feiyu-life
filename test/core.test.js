@@ -60,7 +60,7 @@ const shareState = (now = NOW) => {
 
 test('blankState：两根轴各自在基线上，没有 dims / energy', () => {
   const s = blankState(NOW)
-  assert.equal(s.version, 3)
+  assert.equal(s.version, 4)
   assert.equal(s.mood, 70)
   assert.equal(s.spirit, 55)
   assert.equal(s.dims, undefined)
@@ -163,22 +163,49 @@ test('noteRest：记下歇着的时刻，并往时间线里留一条', () => {
   assert.equal(s.lastRestAt, NOW, '不能改入参')
 })
 
-test('normalizeState：v2 的 dims 折算成 spirit，dims/energy 被删掉', () => {
+test('normalizeState：只出现行字段，老版本留下的杂项一律丢掉', () => {
   const raw = {
     version: 2,
     mood: 80,
-    dims: { happy: 30, calm: 10, sweet: 0, heartache: 0, worry: 0, sad: 0, jealous: 0 },
+    dims: { happy: 30, calm: 10 },
     energy: 61,
     energyFlow: { spent: 3, gained: 0, since: NOW },
-    custom: '宿主的账本',
+    someOldThing: '宿主的旧账本',
   }
   const s = normalizeState(raw, NOW)
-  assert.equal(s.version, 3)
+  assert.equal(s.version, 4)
   assert.equal(s.mood, 80)
-  assert.equal(s.spirit, 20)
   assert.equal(s.dims, undefined)
   assert.equal(s.energy, undefined)
-  assert.equal(s.custom, '宿主的账本')
+  assert.equal(s.someOldThing, undefined, '不认识的字段不再带进新状态')
+})
+
+test('normalizeState：每轮都在用的活账本一个都不许丢', () => {
+  const raw = {
+    lastHeart: { do: 'speak', text: '我回来了' },
+    thoughts: [{ at: 1, text: '想去看那部片子' }],
+    plans: [{ at: 2, text: '把六步清单补完' }],
+    nextWakeAt: 12345,
+    lastUserText: '人家先去洗澡了',
+    lastAskAt: 7,
+    lastInjectedAt: 9,
+    unread: 3,
+    wakeTimes: [NOW - 1000, NOW - 2 * 864e5 * 9],
+    spend: { day: NOW, yuan: 1.25 },
+    memoryDay: '2026-11-01',
+  }
+  const s = normalizeState(raw, NOW)
+  assert.deepEqual(s.lastHeart, { do: 'speak', text: '我回来了' })
+  assert.equal(s.thoughts.length, 1)
+  assert.equal(s.plans[0].text, '把六步清单补完')
+  assert.equal(s.nextWakeAt, 12345)
+  assert.equal(s.lastUserText, '人家先去洗澡了')
+  assert.equal(s.lastAskAt, 7)
+  assert.equal(s.lastInjectedAt, 9)
+  assert.equal(s.unread, 3)
+  assert.equal(s.spend.yuan, 1.25)
+  assert.equal(s.memoryDay, '2026-11-01')
+  assert.deepEqual(s.wakeTimes, [NOW - 1000], '超过三天的唤醒时刻清掉')
 })
 
 test('normalizeState：全新或坏掉的状态落回基线', () => {

@@ -81,6 +81,19 @@
   function two(n) {
     return n < 10 ? '0' + n : String(n)
   }
+  // 「马上自己想想」看不出到底多久，这里算成秒/分钟，每秒刷一次
+  function nextText(wake) {
+    var ms = Number(wake) - Date.now()
+    if (!isFinite(Number(wake)) || Number(wake) <= 0) return '还没排下一次'
+    var at = new Date(Number(wake))
+    var hh = two(at.getHours()) + ':' + two(at.getMinutes()) + ':' + two(at.getSeconds())
+    if (ms <= 0) return hh + ' 已到点，下一轮就该想了'
+    if (ms < 60000) return hh + '（还有 ' + Math.max(1, Math.ceil(ms / 1000)) + ' 秒）'
+    var m = Math.floor(ms / 60000)
+    if (m < 60) return hh + '（还有 ' + m + ' 分 ' + Math.floor((ms % 60000) / 1000) + ' 秒）'
+    return hh + '（' + Math.floor(m / 60) + ' 小时 ' + (m % 60) + ' 分后）'
+  }
+
   function clock(t) {
     if (!t) return '--'
     var d = new Date(t)
@@ -139,7 +152,7 @@
     '.fl-dimlabel{width:36px;flex:0 0 36px;color:#9aa6bb;font-size:12px}',
     '.fl-bar{flex:1;height:6px;border-radius:4px;background:rgba(140,160,200,.18);overflow:hidden}',
     '.fl-bar i{display:block;height:100%;border-radius:4px;transition:width .35s ease}',
-    '.fl-val{width:48px;text-align:right;color:#9aa6bb;flex:0 0 48px;font-size:12px;white-space:nowrap}',
+    '.fl-val{width:72px;text-align:right;color:#9aa6bb;flex:0 0 72px;font-size:12px;white-space:nowrap}',
 
     '.fl-wkmini{font-size:11px;color:#7c8598;margin:5px 0 2px}',
     '.fl-fact{font-size:11px;color:#8a93a6;padding:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -151,35 +164,62 @@
     '.fl-tlrow:last-child{border-bottom:0}',
     '.fl-tltime{flex:0 0 78px;color:#7f8899;font-size:11px}',
     '.fl-tldelta{flex:0 0 34px;font-size:11px;color:#9aa6bb;font-variant-numeric:tabular-nums}',
-    '.fl-tlreason{flex:1;overflow-wrap:anywhere;word-break:break-word;font-size:12px}',
+    '.fl-tlreason{flex:1;overflow-wrap:anywhere;word-break:break-word;font-size:12px;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.fl-note{color:#8a93a6;font-size:12px;padding:3px 0}',
 
     '.fl-scroll{flex:1;min-height:0;overflow:hidden;margin:0 -2px;padding:0 2px}',
     '.fl-tlbox{max-height:none;overflow:visible}',
 
     '.fl-askline{font-size:11px;color:#77808f;padding:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.fl-heart{font-size:11px;color:#9aa6bb;padding:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.fl-heart{font-size:11px;color:#9aa6bb;padding:0 0 2px;overflow-wrap:anywhere;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.fl-rest{font-size:11px;color:#7f8899;padding:0 0 4px}',
     '.fl-prog{display:flex;flex-direction:column;gap:1px}',
-    '.fl-progrow{font-size:11px;color:#8a93a6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.fl-progrow{font-size:11px;color:#8a93a6;overflow-wrap:anywhere;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.fl-sec-mini{font-weight:600;color:#9aa6bb;margin:6px 0 2px;font-size:11px}',
     '.fl-thoughts{padding:1px 0 0}',
     '.fl-thought{font-size:11px;color:#7f8899;overflow-wrap:anywhere;padding:1px 0}',
-    '.fl-last{font-size:11px;color:#8a93a6;padding:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.fl-last{font-size:11px;color:#8a93a6;padding:0 0 3px;overflow-wrap:anywhere;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.fl-beh{display:flex;align-items:center;gap:7px;padding:1px 0;white-space:nowrap}',
-    '.fl-behlabel{flex:0 0 58px;font-size:12px;overflow:hidden;text-overflow:ellipsis}',
-    '.fl-behstate{flex:0 0 84px;font-size:11px;color:#8a93a6;overflow:hidden;text-overflow:ellipsis}',
-    '.fl-behbar{flex:1;min-width:40px;height:4px;border-radius:3px;background:rgba(140,160,200,.18);overflow:hidden}',
+    '.fl-behlabel{flex:0 0 52px;font-size:12px;overflow:hidden;text-overflow:ellipsis}',
+    '.fl-behstate{flex:0 0 auto;font-size:10.5px;color:#8a93a6;white-space:nowrap}',
+    '.fl-behbar{flex:1;min-width:22px;height:4px;border-radius:3px;background:rgba(140,160,200,.18);overflow:hidden}',
     '.fl-behbar i{display:block;height:100%;border-radius:3px;background:#8fb4e6;transition:width .35s ease}',
     '.fl-behoff .fl-behlabel{color:#6f7683}',
     '.fl-behoff .fl-behstate{color:#a58a8a}',
 
-    '.fl-wk{display:flex;align-items:center;gap:6px;padding:1px 0;',
+    '.fl-wk{display:flex;align-items:center;gap:7px;padding:3px 0;',
     'border-bottom:1px solid rgba(140,160,200,.10)}',
     '.fl-wk:last-child{border-bottom:0}',
-    '.fl-wktext{flex:1;font-size:12px;overflow-wrap:anywhere;word-break:break-word}',
+    '.fl-wkmain{flex:1;min-width:0}',
+    '.fl-wktitle{font-size:12.5px;line-height:1.35;color:#dbe3ef;overflow-wrap:anywhere;word-break:break-word;',
+    'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+    '.fl-wksub{font-size:10.5px;line-height:1.3;color:#7c8598;margin-top:1px;',
+    'overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.fl-wkdot{flex:0 0 auto;display:inline-block;vertical-align:middle;width:9px;height:9px;border-radius:50%;background:#6b7280}',
+    '.fl-wkdot[data-st="new"]{background:#6b7280}',
+    '.fl-wkdot[data-st="going"]{background:#5aa9f0;box-shadow:0 0 0 3px rgba(90,169,240,.16)}',
+    '.fl-wkdot[data-st="stuck"]{background:#e0a94f;box-shadow:0 0 0 3px rgba(224,169,79,.16)}',
     '.fl-wkact{flex:0 0 auto;border:0;background:transparent;color:#6f7a8c;font:inherit;',
-    'font-size:11px;line-height:1.2;padding:0 1px;cursor:pointer}',
+    'font-size:11px;line-height:1.2;padding:0 1px;cursor:pointer;opacity:.55;transition:opacity .12s}',
+    '.fl-wk:hover .fl-wkact,.fl-wkact:focus-visible{opacity:1}',
+    '.fl-wkst{flex:0 0 auto;font-size:10px;line-height:1;letter-spacing:.02em;color:#8a93a6;width:26px;text-align:right}',
+    '.fl-wkst[data-st="going"]{color:#7fb6e8}',
+    '.fl-wkst[data-st="stuck"]{color:#dfb06a}',
+    '.fl-wklegend{display:flex;gap:10px;align-items:center;font-size:10px;color:#6f7a8c;padding:1px 0 3px}',
+    '.fl-wklegend span{display:inline-flex;gap:3px;align-items:center}',
+    '.fl-wklegend .fl-wkdot{width:7px;height:7px}',
+    '.fl-updated{font-size:10px;color:#66707f;padding:2px 0 0;text-align:right}',
+    '.fl-membox{display:flex;flex-direction:column;gap:4px;padding:2px 0 6px}',
+    '.fl-mem{font-size:11px;line-height:1.45;color:#c6ccd8;display:flex;gap:6px;align-items:flex-start}',
+    '.fl-mem i{flex:0 0 auto;width:5px;height:5px;border-radius:50%;margin-top:5px;background:#5aa9f0}',
+    '.fl-mem[data-clarity=fuzzy] i{background:#8b93a3}',
+    '.fl-mem[data-clarity=trace] i{background:#5a616e}',
+    '.fl-mem[data-clarity=fuzzy] span,.fl-mem[data-clarity=trace] span{color:#98a0ae}',
+    '.fl-unread{display:inline-block;min-width:16px;height:16px;line-height:16px;padding:0 4px;border-radius:8px;background:#e0574f;color:#fff;font-size:10px;text-align:center;margin-left:6px}',
     '.fl-wkact:hover{color:#cfd8e6}',
     '.fl-wkact.fl-wkdel:hover{color:#e0a0a0}',
     '.fl-wkact[disabled]{opacity:.4;cursor:default}',
@@ -254,7 +294,10 @@
   function setBar(bar, v, word) {
     var n = clamp01(v)
     bar.fill.style.width = n + '%'
-    bar.val.textContent = word === undefined ? String(Math.round(n)) : word
+    // 只写「好受」读不出分数，只写 70 又不知道啥意思：两个都给，刻度统一是 0–100
+    var num = Math.round(n)
+    bar.val.textContent = word ? word + ' ' + num : String(num)
+    bar.val.title = '0–100，' + num + ' 分' + (word ? '（' + word + '）' : '')
   }
 
   // 宿主算好的一条事实，最多显示一条
@@ -345,7 +388,7 @@
 
   // —— 她在做什么：最近一次 + 五个行为 ——
   var behHead = el('div', 'fl-sec')
-  behHead.appendChild(el('div', '', '人家在做什么'))
+  behHead.appendChild(el('div', '', '刚才做了什么'))
   ui.behHead = behHead
 
   ui.scroll.appendChild(behHead)
@@ -379,6 +422,16 @@
   ui.workBox = el('div', 'fl-wkbox')
   ui.scroll.appendChild(ui.workBox)
 
+  // —— 她记得的（v0.10）——
+  ui.memHead = el('div', 'fl-sec')
+  ui.memHead.appendChild(el('div', '', '她记得的'))
+  ui.memCount = el('span', '', '')
+  ui.memHead.appendChild(ui.memCount)
+  ui.scroll.appendChild(ui.memHead)
+
+  ui.memBox = el('div', 'fl-membox')
+  ui.scroll.appendChild(ui.memBox)
+
   // —— 时间线 ——
   var tlHead = el('div', 'fl-sec')
   tlHead.appendChild(el('div', '', '最近的心情'))
@@ -398,6 +451,8 @@
 
   // —— 按钮 ——
   // 底部不留 CTA
+  ui.updated = el('div', 'fl-updated', '')
+  panel.appendChild(ui.updated)
   ui.status = el('div', 'fl-status', '')
   panel.appendChild(ui.status)
 
@@ -592,15 +647,9 @@
     }
 
     var wake = Number(h && h.nextWakeAt)
-    if (isFinite(wake) && wake > 0) {
-      var mins = Math.round((wake - Date.now()) / 60000)
-      ui.nextKey.textContent = '下次'
-      ui.nextVal.textContent = mins > 60
-        ? '大约一小时后自己想想'
-        : (mins <= 0 ? '马上自己想想' : '大约 ' + mins + ' 分钟后自己想想')
-    } else {
-      ui.nextKey.textContent = '下次大概'
-      }
+    ui.wakeAt = isFinite(wake) ? wake : 0
+    ui.nextKey.textContent = '下次'
+    ui.nextVal.textContent = nextText(wake)
 
     ui.restWanted = !!(h && h.forcedRest)
     ui.restLine.style.display = ui.restWanted ? '' : 'none'
@@ -658,8 +707,8 @@
       r.label.title = r.label.textContent
 
       var used = Number(b.used)
-      var countText = isFinite(used) && used > 0 ? '今天做过 ' + used + ' 次' : ''
-      var state = off ? '关掉了' : (countText || '还没做过')
+      var countText = isFinite(used) && used > 0 ? '今天 ' + used + ' 次' : ''
+      var state = off ? '关掉了' : (countText ? countText + ' · 兴致 ' + Math.round((Number(b.appetite) || 0) * 100) + '%' : '今天还没轮到')
       r.state.textContent = state
       r.state.title = state
 
@@ -696,12 +745,56 @@
     })
   }
 
+  // 一条活的状态：刚记下没动过 / 动过在推进 / 卡了一天多没挪。
+  // 灯只摆事实，不判断她努不努力——红灯的意思是「这条该找主人说了」。
+  function workStatus(it) {
+    var tries = Number(it.attempts) || 0
+    var at = Number(it.progressAt) || 0
+    var last = at || Number(it.createdAt) || 0
+    if (tries >= 3 && Date.now() - last > 24 * 3600 * 1000) return 'stuck'
+    if (tries > 0 || String(it.progress || '').trim()) return 'going'
+    return 'new'
+  }
+
+  // 「刚记下」是状态，不是时间。挂了两小时和挂了十秒得长得不一样，
+  // 不然主人看不出这条是刚接的还是在桌上躺了一天。
+  function ageWord(ms) {
+    var m = Math.round(Math.max(0, ms) / 60000)
+    if (m < 5) return '刚记下'
+    if (m < 60) return m + ' 分钟前记下'
+    var h = Math.round(m / 60)
+    if (h < 24) return h + ' 小时前记下'
+    return Math.round(h / 24) + ' 天前记下'
+  }
+
+  function workSub(it, st) {
+    var parts = []
+    var tries = Number(it.attempts) || 0
+    var created = Number(it.createdAt) || 0
+    if (st === 'stuck') parts.push('卡了一天多没动')
+    else parts.push(ageWord(created ? Date.now() - created : 0))
+    if (tries > 0) parts.push('试过 ' + tries + ' 次')
+    if (Number(it.merged) > 0) parts.push('同一个说法记过 ' + (Number(it.merged) + 1) + ' 遍')
+    var at = Number(it.progressAt) || 0
+    var prog = String(it.progress || '').trim()
+    if (prog) parts.push((at ? clock(at) + ' ' : '') + prog)
+    else if (at) parts.push(clock(at) + ' 动过一下')
+    return parts.join(' · ')
+  }
+
+  var WORK_STATUS_WORD = { new: '新', going: '推进', stuck: '卡住' }
+  var WORK_STATUS_TIP = {
+    new: '刚记下，还没动过',
+    going: '动过了，正在推进',
+    stuck: '试过几次还卡着，该跟主人说一声',
+  }
+
   function renderWork(d) {
     var all = workAll(d)
     ui.wkTotal = all.length
     var list = all.slice(0, WORK_ROWS)
     var sig = list.map(function (it) {
-      return it.id + '|' + it.text
+      return [it.id, it.text, it.attempts, it.progressAt, it.progress, it.urgency].join('|')
     }).join(';') + '#' + all.length
     if (sig === ui.wkSig) return
     ui.wkSig = sig
@@ -713,10 +806,27 @@
       box.appendChild(el('div', 'fl-note', '手上没挂着什么'))
       return
     }
-    box.appendChild(el('div', 'fl-wkmini', '挂着的活'))
+    var head = el('div', 'fl-wkmini', '挂着的活')
+    box.appendChild(head)
+    var legend = el('div', 'fl-wklegend')
+    ;['new', 'going', 'stuck'].forEach(function (k) {
+      var item = el('span', '', WORK_STATUS_WORD[k])
+      item.setAttribute('data-st', k)
+      var lamp = el('span', 'fl-wkdot')
+      lamp.setAttribute('data-st', k)
+      item.appendChild(lamp)
+      item.title = WORK_STATUS_TIP[k]
+      legend.appendChild(item)
+    })
+    box.appendChild(legend)
     list.forEach(function (it) {
       var row = el('div', 'fl-wk')
-      row.appendChild(el('span', 'fl-wktext', it.text || '（没写是什么）'))
+      var st = workStatus(it)
+
+      var main = el('div', 'fl-wkmain')
+      main.appendChild(el('div', 'fl-wktitle', it.text || '（没写是什么）'))
+      main.appendChild(el('div', 'fl-wksub', workSub(it, st)))
+      row.appendChild(main)
 
       var done = el('button', 'fl-wkact', '做完了')
       done.type = 'button'
@@ -737,6 +847,15 @@
         doAction('work-drop', '扔…', '清掉了', { id: it.id })
       })
       row.appendChild(drop)
+
+      var dot = el('span', 'fl-wkdot')
+      dot.setAttribute('data-st', st)
+      dot.title = WORK_STATUS_TIP[st]
+      var word = el('span', 'fl-wkst', WORK_STATUS_WORD[st])
+      word.setAttribute('data-st', st)
+      word.title = WORK_STATUS_TIP[st]
+      row.appendChild(dot)
+      row.appendChild(word)
 
       box.appendChild(row)
     })
@@ -875,6 +994,35 @@
     return '人家在' + p.her + '，主人在' + p.owner
   }
 
+  // 她这会儿还记得什么，和「有没有刚收过尾」
+  function renderMemories(d) {
+    var mem = (d && d.memory) || {}
+    var list = Array.isArray(mem.recently) ? mem.recently : []
+    var count = Number(mem.total) || 0
+    ui.memCount.textContent = count ? '记得 ' + count + ' 条' : ''
+    var box = ui.memBox
+    while (box.firstChild) box.removeChild(box.firstChild)
+    if (!list.length) {
+      ui.memHead.style.display = 'none'
+      return
+    }
+    ui.memHead.style.display = ''
+    list.forEach(function (it) {
+      var row = el('div', 'fl-mem')
+      row.setAttribute('data-clarity', it.clarity || 'clear')
+      row.appendChild(el('i'))
+      row.appendChild(el('span', '', it.text || ''))
+      box.appendChild(row)
+    })
+    var closure = d && d.closure
+    if (closure && closure.summary) {
+      var note = el('div', 'fl-mem', '上回收尾：' + closure.summary)
+      note.setAttribute('data-clarity', 'trace')
+      note.insertBefore(el('i'), note.firstChild)
+      box.appendChild(note)
+    }
+  }
+
   function applyPanel(d) {
     var st = (d && d.state) || {}
     var mood = Number(st.mood)
@@ -885,19 +1033,22 @@
     var heart = heartOf(d)
     var last = heart && heart.lastHeart
 
-    ui.gateVal.textContent = heartReason(d)
+    var gateText = heartReason(d)
+    ui.gateVal.textContent = gateText || '这会儿没什么非说不可的'
+    // 未读：主人说了几句她还没搭理的
+    var unread = Number(d && d.unread)
+    if (ui.gateBadge) ui.gateBadge.parentNode && ui.gateBadge.parentNode.removeChild(ui.gateBadge)
+    if (unread > 0) {
+      ui.gateBadge = el('span', 'fl-unread', String(unread))
+      ui.gateVal.appendChild(ui.gateBadge)
+    }
+    ui.gateVal.style.color = gateText ? '' : '#7c8598'
     if (last && last.do === 'speak') ui.gateDot.setAttribute('data-on', '')
     else ui.gateDot.removeAttribute('data-on')
 
     var wake = Number(heart && heart.nextWakeAt)
-    ui.nextVal.textContent = isFinite(wake) && wake > 0
-      ? (function () {
-        var mins = Math.round((wake - Date.now()) / 60000)
-        if (mins > 60) return '大约一小时后自己想想'
-        if (mins <= 0) return '马上自己想想'
-        return '大约 ' + mins + ' 分钟后自己想想'
-      })()
-      : ''
+    ui.wakeAt = isFinite(wake) ? wake : 0
+    ui.nextVal.textContent = nextText(wake)
 
     ui.moodNum.textContent = isFinite(mood) ? String(Math.round(mood)) : '--'
     ui.moodLabel.textContent = moodWord(mood) || f.label
@@ -924,10 +1075,12 @@
     renderBehaviors(d)
     renderLast(d)
     renderWork(d)
+    renderMemories(d)
     renderProgress(d)
     renderLastUse(d)
     renderPendingAsks(d)
     renderTimeline(st, d)
+    ui.updated.textContent = '更新于 ' + clock(Date.now()).slice(-5)
     fitPanel()
     positionPanel()
   }
@@ -1175,4 +1328,10 @@
 
   load()
   window.setInterval(load, POLL_MS)
+  // 倒计时每秒走一格：只改这一行文字，不重新拉数据
+  window.setInterval(function () {
+    if (!ui || !ui.wakeAt) return
+    var text = nextText(ui.wakeAt)
+    if (ui.nextVal.textContent !== text) ui.nextVal.textContent = text
+  }, 1000)
 })()

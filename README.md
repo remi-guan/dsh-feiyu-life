@@ -123,9 +123,34 @@ dsh plugin --profile desktop add dsh-timer-agent
 | `outbox.json` | 出站台账：谁、什么时候、说了什么（留最近 40 条） |
 | `sessions.json` | 最近说过话的会话（`recent` 策略用） |
 | `progress.md` | 她自己记的「做过什么」，一行一条 |
+| `memory-card.md` | 她记得的事。**唯一真相就是这一份 markdown**，可以手写手改 |
 | `diag.log` | 诊断日志，超过 1MB 自己清空 |
 
+`memory-card.md` 一行一条，行尾方括号是元信息：
+
+```
+- 主人怕吵，耳机音量总是调到六成 [clear 2026-11-01 62 3 owner]
+```
+
+清晰度分五档（`vivid` 清楚 / `clear` 记得 / `fuzzy` 有点模糊 / `trace` 只剩影子 / `forgotten` 忘了），一天最多降一档，被再提起就回到「记得」。主人手写但没写方括号的行也不会丢，会标成 `fixme` 原样留着。写盘是在原文上原位改：只重写 `- ` 开头的那几条，标题、说明、自己写的散文一个字都不动。
+
+要 json 就给别的脚本用：
+
+```bash
+node scripts/memory-to-json.mjs --pretty -o /tmp/memory.json
+```
+
 她的笔记如果落在 `herNotesDir` 里，那是给人看的纯 markdown，直接打开就读。
+
+## 主人说话的那一轮，她看见什么
+
+醒来那一套（心情、挂着的活、议程）是给她「自己找话说」用的。主人真开口的时候，她另外多拿一份状况单：
+
+这一轮是在回话而不是自己起的话头、隔了多久没说话、上次开口是多久前、他连着发了几条、这一轮最多发几条、他最后一句的原文、有没有没说完、收尾建议、记得的事、手上还挂着几件活。
+
+只在他开口后的第一轮挂一次，十分钟没被用到就丢。他在十分钟里发到四条以上，这一轮就收成一条——一句话拆成四条砸过去，比不回还吵。
+
+`replyBrief` 那几个数在配置里改。
 
 ## 设计上的取舍
 
@@ -150,7 +175,7 @@ dsh plugin --profile desktop add dsh-timer-agent
 ## 开发
 
 ```bash
-npm test          # node --test test/，169 个用例
+npm test          # node --test test/，203 个用例
 ```
 
 ```

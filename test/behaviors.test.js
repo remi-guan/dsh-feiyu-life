@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { blankState, normalizeState, noteBehavior, openWorkAdd, openWorkDone, openWorkList, dayKey } from '../lib/core/state.js'
+import {
+  blankState, dayKey, normalizeState, noteBehavior, openWorkAdd, openWorkDone, openWorkList, openWorkNote,
+  openWorkMergeAll, openWorkSimilar, openWorkStuck,
+} from '../lib/core/state.js'
 import { BEHAVIORS, checkinPlan, pickBehavior, planDay } from '../lib/core/behaviors.js'
 import { detectRoutine } from '../lib/core/routine.js'
 import { behaviorPrompt } from '../lib/core/prompt.js'
@@ -190,7 +193,7 @@ test('每条行为最后都要给主人发一句（走 QQ 时）', () => {
   for (const id of ['journal', 'browse', 'continue', 'help']) {
     const qq = behaviorPrompt(id, state, { now: DAY }, { talkChannel: 'qq' })
     assert.ok(qq.includes('notify-qq.py'), `${id} 要交代发 QQ`)
-    assert.ok(qq.includes('跑一次或几次'), `${id} 允许分几条发`)
+    assert.ok(qq.includes('有几件事就分开发几条'), `${id} 允许分几条发`)
     assert.ok(!/只发一句/.test(qq), '不再强求只发一句')
     const inSession = behaviorPrompt(id, state, { now: DAY }, { talkChannel: 'session' })
     assert.ok(!inSession.includes('notify-qq.py'), `${id} 发到会话时不该跑 QQ 脚本`)
@@ -256,4 +259,109 @@ test('问饭和写日记的提示词各自带了要做的那件事', () => {
   const night = new Date(2026, 9, 31, 22, 10, 0).getTime()
   const diary = behaviorPrompt('diary', quietState(night), { now: night }, {})
   assert.match(diary, /日记\/2026-10-31\.md/)
+})
+
+test('同一件事换个说法只记一条，不长的复读行', () => {
+  const state = blankState(DAY)
+  openWorkAdd(state, { text: '把 B站和小红书的操作步骤补进 lcu 排障文档', urgency: 0.4 }, DAY)
+  openWorkAdd(state, { text: '把 B站/小红书这一轮的真实操作步骤补进 lcu 排障文档，每步写清用了哪个 verb', urgency: 0.5 }, DAY + 1000)
+  openWorkAdd(state, { text: '把 B站/小红书六步操作清单也补进那份 lcu 排障文档', urgency: 0.4 }, DAY + 2000)
+  assert.equal(openWorkList(state).length, 1, '三条说的是同一件事，应该并成一条')
+  const only = openWorkList(state)[0]
+  assert.equal(only.merged, 2, '合并次数要记下来')
+  assert.equal(only.urgency, 0.5, '合并后取更急的那个')
+  assert.match(only.text, /B站和小红书/, '说法留着最早那版')
+})
+
+test('不相干的活不许并到一起', () => {
+  const state = blankState(DAY)
+  openWorkAdd(state, { text: '整理简历里的项目描述', urgency: 0.4 }, DAY)
+  openWorkAdd(state, { text: '把 docker 镜像换成 node 22', urgency: 0.4 }, DAY + 1)
+  openWorkAdd(state, { text: '给主人订周日回程的票', urgency: 0.4 }, DAY + 2)
+  assert.equal(openWorkList(state).length, 3)
+  assert.equal(openWorkSimilar('整理简历', '把 docker 镜像换成 node 22'), false)
+})
+
+test('推进要留痕：记过进度、试过几次、卡住怎么判', () => {
+  const state = blankState(DAY)
+  openWorkAdd(state, { text: '把导出流程写成一条脚本', urgency: 0.5 }, DAY)
+  const id = openWorkList(state)[0].id
+
+  openWorkNote(state, id, '脚本骨架写好了，剩参数解析', DAY + 60000)
+  openWorkNote(state, id, '参数也接上了，卡在权限报错', DAY + 120000)
+  openWorkNote(state, id, '权限那条绕不过去，先停这儿', DAY + 180000)
+  const item = openWorkList(state)[0]
+  assert.equal(item.attempts, 3)
+  assert.equal(item.progressAt, DAY + 180000)
+  assert.match(item.progress, /权限那条/)
+  assert.equal(openWorkStuck(item, DAY + 190000), false, '刚推进过，不算卡住')
+
+  // 过了两天没动、试过三次以上 → 卡住
+  const later = DAY + 49 * 3600 * 1000
+  assert.equal(openWorkStuck(item, later), true)
+
+  openWorkDone(state, id, later, '做完了')
+  assert.equal(openWorkList(state).length, 0)
+  assert.equal(openWorkStuck(item, later), false, '做完的活不算卡住')
+})
+
+test('排任务打点不等于推进：连着排几次仍能判出卡住', () => {
+  const state = blankState(DAY)
+  openWorkAdd(state, { text: '把导出流程写成一条脚本', urgency: 0.5 }, DAY)
+  const id = openWorkList(state)[0].id
+  // 宿主排了三次任务但一句进度都没留下来
+  openWorkNote(state, id, '', DAY + 3600000)
+  openWorkNote(state, id, '', DAY + 2 * 3600000)
+  openWorkNote(state, id, '', DAY + 3 * 3600000)
+  const item = openWorkList(state)[0]
+  assert.equal(item.attempts, 3)
+  assert.ok(!item.progressAt, '空 note 不该刷新推进时间')
+  assert.equal(openWorkStuck(item, DAY + 26 * 3600000), true)
+})
+
+test('continue 的 prompt 会带上「上次做到哪」', () => {
+  const state = blankState(DAY)
+  openWorkAdd(state, { text: '把导出流程写成一条脚本', urgency: 0.6 }, DAY)
+  const id = openWorkList(state)[0].id
+  openWorkNote(state, id, '脚本骨架写好了，还差命令行参数', DAY + 60000)
+  const text = behaviorPrompt('continue', state, { now: DAY + 3600000 }, {})
+  assert.ok(text.includes('上次做到'), '要把 progress 写进 prompt')
+  assert.ok(text.includes('还差命令行参数'), 'progress 的正文不能被 map 掉')
+  assert.ok(text.includes('「把导出流程写成一条脚本」'), '要点名是哪条活')
+})
+
+test('换了一种说法的长句也算同一件事（路径和标点先剥掉再比骨架）', () => {
+  const a = '核完清单就通读 AGENTS.md 的说话段落，摘「AI 味」典型句式，写成左右两列对照'
+  const b = '通读 AGENTS.md 说话段落，摘「AI 味」典型句式，写成左右两列对照'
+  assert.equal(openWorkSimilar(a, b), true)
+  // 只是「都在整理东西」这种泛泛相同不许并
+  assert.equal(openWorkSimilar('把导出的 CSV 收个尾', '整理桌面上的截图'), false)
+})
+
+test('读旧文件时把攒下的重复条目并成一条，保留最早那版说法', () => {
+  const now = DAY
+  const state = normalizeState({
+    openWork: [
+      { id: 'w1', text: '把 ai-wei-duizhao.md 写成左右两列：AI 味原句 / 人家会怎么说', createdAt: now - 3000 },
+      { id: 'w2', text: '把 ~/.dsh/feiyu-life/ai-wei-duizhao.md 写成左右两列对照：AI 味原句', createdAt: now - 2000 },
+      { id: 'w3', text: '给主人写一份面试台本', createdAt: now - 1000 },
+    ],
+  }, now)
+  assert.equal(state.openWork.length, 2)
+  assert.equal(state.openWork[0].text, '把 ai-wei-duizhao.md 写成左右两列：AI 味原句 / 人家会怎么说')
+  assert.equal(state.openWork[0].merged, 1)
+  assert.equal(state.openWork[1].text, '给主人写一份面试台本')
+})
+
+test('合并保留已经留下的进度痕迹', () => {
+  const now = DAY
+  const state = normalizeState({
+    openWork: [
+      { id: 'w1', text: '把导出脚本的模板整理成左右两列对照表', createdAt: now - 3000 },
+      { id: 'w2', text: '把导出脚本的模板整理成左右两列对照表，顺手补文档', createdAt: now - 2000, progress: '前两列写完了', progressAt: now - 1000, attempts: 2 },
+    ],
+  }, now)
+  assert.equal(state.openWork.length, 1)
+  assert.equal(state.openWork[0].progress, '前两列写完了')
+  assert.equal(state.openWork[0].attempts, 2)
 })
