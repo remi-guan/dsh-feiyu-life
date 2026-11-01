@@ -1,6 +1,6 @@
 {
   "name": "dsh-feiyu-life",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "给 DSH 里的 AI 伙伴一副自己的心情、四间屋子和几只会自己动的手：心情在模型外面按确定性规则演化，什么时候说话、做什么，由她自己每 20 分钟拿一次主意。",
   "license": "MIT",
   "type": "module",

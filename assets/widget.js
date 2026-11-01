@@ -337,6 +337,16 @@
   nextRow.appendChild(ui.nextVal)
   panel.appendChild(nextRow)
 
+  // —— 正在忙 ——（她自己排的那条任务还在跑的时候才显示）
+  var runRow = el('div', 'fl-nextline')
+  ui.runKey = el('div', 'fl-key', '正在忙')
+  runRow.appendChild(ui.runKey)
+  ui.runVal = el('div', 'fl-nextval', '')
+  runRow.appendChild(ui.runVal)
+  ui.runRow = runRow
+  runRow.style.display = 'none'
+  panel.appendChild(runRow)
+
   // —— 立绘表情 + 总心情 ——
   var head = el('div', 'fl-head')
   ui.face = img(B + '/face-ok.png', 'fl-face', '表情')
@@ -655,6 +665,26 @@
     ui.restLine.style.display = ui.restWanted ? '' : 'none'
 
     renderThoughts(h)
+  }
+
+  /** 「正在忙」那行：她排的任务还在跑，就把标题和剩余时间摊出来。 */
+  function runningText(run) {
+    if (!run || typeof run !== 'object') return ''
+    var title = String(run.title || '她自己的事')
+    var endsAt = Number(run.endsAt)
+    if (!isFinite(endsAt) || endsAt <= 0) return title
+    var ms = endsAt - Date.now()
+    if (ms <= 0) return title + ' · 超时了，等它自己收尾'
+    return title + ' · 还剩 ' + Math.max(1, Math.ceil(ms / 60000)) + ' 分钟'
+  }
+
+  function renderRunning(d) {
+    var run = pick(d, 'running')
+    var text = runningText(run)
+    ui.runAt = text ? Number(run.endsAt) || 0 : 0
+    ui.runTitle = run && run.title ? String(run.title) : ''
+    ui.runRow.style.display = text ? '' : 'none'
+    if (text && ui.runVal.textContent !== text) ui.runVal.textContent = text
   }
 
   function renderThoughts(h) {
@@ -1072,6 +1102,7 @@
     renderFacts(d)
 
     renderHeart(d)
+    renderRunning(d)
     renderBehaviors(d)
     renderLast(d)
     renderWork(d)
@@ -1333,5 +1364,9 @@
     if (!ui || !ui.wakeAt) return
     var text = nextText(ui.wakeAt)
     if (ui.nextVal.textContent !== text) ui.nextVal.textContent = text
+    if (ui.runAt) {
+      var running = runningText({ title: ui.runTitle, endsAt: ui.runAt })
+      if (running && ui.runVal.textContent !== running) ui.runVal.textContent = running
+    }
   }, 1000)
 })()
