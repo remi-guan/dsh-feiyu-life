@@ -456,7 +456,7 @@ window.__ModuleLoader__.load({
             h('div', { 'data-fl-grow': '' },
               h('div', { 'data-fl-label': '' }, '人家自己的会话'),
               h('div', { 'data-fl-note': '' },
-                '人家的行为、写东西、上网都在这个会话里跑，不占主人的对话')),
+                '她的行为和自言自语跑在这个会话里，不占主人的对话')),
             h('select', {
               'data-fl-input': '', value: cfg.workSession || '',
               onChange: (e) => patch({ workSession: e.target.value }, '人家的会话'),
@@ -505,7 +505,7 @@ window.__ModuleLoader__.load({
             h('div', { 'data-fl-grow': '' },
               h('div', { 'data-fl-label': '' }, '主人说完就去忙时也开口'),
               h('div', { 'data-fl-note': '' },
-                '主人常是说完一句就去干别的了。开着的话，安静一会儿就自己接手，说话和做事都不干等')),
+                '主人说完就走时，安静一会儿她就自己接手')),
             sw('eagerAfterTalk', '说完也开口')),
           h('div', { 'data-fl-row': '' },
             h('div', { 'data-fl-grow': '' },
@@ -525,7 +525,7 @@ window.__ModuleLoader__.load({
             h('div', { 'data-fl-grow': '' },
               h('div', { 'data-fl-label': '' }, '心情注入方式'),
               h('div', { 'data-fl-note': '' },
-                '上面关掉就一句都不注入；这里选频率：心情变了才说一句 / 每轮都说 / 不注入')),
+                '上一项关掉就一句都不注入；这里选说多勤')),
             h('select', {
               'data-fl-input': '', value: cfg.injectMode || 'on-change',
               onChange: (e) => patch({ injectMode: e.target.value }, '注入方式'),
@@ -552,7 +552,7 @@ window.__ModuleLoader__.load({
         h('div', { 'data-fl-sec': '' },
           h('div', { 'data-fl-h': '' }, '门路'),
           h('div', { 'data-fl-note': '' },
-            '人家只能用手上这些去替主人做事；开关是主人给的，关掉就不能再碰。'),
+            '可用的手段；关掉就不能再碰。'),
           grants.length
             ? grants.map(grantBlock)
             : h('div', { 'data-fl-note': '' }, '还没给过人家什么'),
@@ -582,7 +582,7 @@ window.__ModuleLoader__.load({
         h('div', { 'data-fl-sec': '' },
           h('div', { 'data-fl-h': '' }, '做什么'),
           h('div', { 'data-fl-note': '' },
-            '开关是主人给的；做不做、什么时候做，人家自己看一眼现状决定。'),
+            '做不做、什么时候做，她自己看现状决定。'),
           BEHAVIORS.map(behRow)),
 
         /* ── 底部：主动消息是怎么来的 ── */
@@ -590,7 +590,7 @@ window.__ModuleLoader__.load({
           h('div', { 'data-fl-note': '' },
             '人家的会话：' + (cfg.workSession ? String(cfg.workSession).slice(0, 10) + '…' : '跟主人同一个')),
           h('div', { 'data-fl-note': '' },
-            '主动消息不是弹窗，是真的会话消息：每次它想说话，宿主都会建一条一次性定时任务，到点由那条任务把话送进上面的会话。下面是最近的 3 条。'),
+            '她开口时宿主会建一条一次性任务，到点把话送进上面的会话。下面是最近 3 条。'),
           jobs.length
             ? jobs.slice(0, 3).map((j, i) => h('div', { 'data-fl-jobrow': '', key: j.id || i },
               h('span', { 'data-fl-jobtime': '' }, fmtTime(j.scheduledAt)),
