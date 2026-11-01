@@ -285,3 +285,40 @@ test('countBurst 只数窗口内的他，不数她自己', () => {
   assert.equal(countBurst(talk, 'fish', now, 10 * 60_000), 1)
   assert.equal(countBurst(null, 'owner', now, 60_000), 0)
 })
+
+// ---- v0.10.4：主人说完就去忙时也开口 ----
+
+import { decide, silenceNeed } from '../lib/core/gate.js'
+import { BEHAVIORS } from '../lib/core/behaviors.js'
+
+const freshState = () => ({ mood: 90, spirit: 90, agenda: [], pendingIntent: null, activity: null })
+
+test('默认还是等 25 分钟才接手', () => {
+  assert.equal(silenceNeed({}), 25)
+  const now = 1_000_000
+  const r = decide(freshState(), now, { lastUserAt: now - 5 * 60000, lastSpokeAt: 0 }, {})
+  assert.equal(r.speak, false)
+  assert.match(r.reason, /还没到 25 分钟/)
+})
+
+test('eagerAfterTalk 打开后 5 分钟就能开口', () => {
+  assert.equal(silenceNeed({ eagerAfterTalk: true }), 3)
+  const now = 1_000_000
+  const r = decide(freshState(), now, { lastUserAt: now - 5 * 60000, lastSpokeAt: 0 }, { eagerAfterTalk: true })
+  assert.equal(r.speak, true)
+})
+
+test('静默时长可调，0 就是说完立刻可以', () => {
+  const now = 1_000_000
+  const cfg = { eagerAfterTalk: true, eagerSilenceMinutes: 0 }
+  const r = decide(freshState(), now, { lastUserAt: now - 10_000, lastSpokeAt: 0 }, cfg)
+  assert.equal(r.speak, true)
+})
+
+test('顺手帮也跟着放宽，不用再等 60 分钟', () => {
+  const help = BEHAVIORS.find((b) => b.id === 'help')
+  const now = 1_000_000
+  const stats = { lastUserAt: now - 5 * 60000 }
+  assert.match(help.gate(freshState(), now, stats, {}) ?? '', /刚说完话/)
+  assert.equal(help.gate(freshState(), now, stats, { eagerAfterTalk: true }), null)
+})

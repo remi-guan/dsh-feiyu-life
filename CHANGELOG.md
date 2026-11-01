@@ -1,5 +1,11 @@
 # 版本说明
 
+## 0.10.4
+
+- **新开关「主人说完就去忙时也开口」**（`eagerAfterTalk`，设置页「说不说话」里）。主人经常是说完一句就去干别的了，旧逻辑要等他安静 25 分钟才肯接手，中间那段时间就这么空着。打开以后按 `eagerSilenceMinutes`（默认 3 分钟，可调，0 就是说完立刻可以）算静默，「顺手帮」的 60 分钟、「写东西」的 40 分钟也跟着一起放宽。
+- `silenceNeed(cfg)` 抽到 `lib/core/gate.js`，说话和做事共用同一个数，不会再出现「说话放开了、做事还卡着」。
+- 默认关着，不影响老行为。测试 203 → 211。
+
 ## 0.10.3
 
 - **断流会重试一次**。19:28 那次 `upstream stream ended before a completion event` 是传输层断的（Clash 在请求中途重设了两次系统 DNS），她那一轮直接空过去、一小时后再醒。现在 `askHeart` 把流包成 `streamOnce`，传输类错误（stream ended / transport / 超时 / socket hang up / EOF）等 3 秒重试一次；登录态没热、缺 key 这类不重试——重试也是同一个结果，还白花一次钱。
